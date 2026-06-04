@@ -8,6 +8,7 @@ import {
   toNumber,
   extractValue,
   civilFromPath,
+  metricValue,
 } from './civil';
 
 describe('civil date helpers', () => {
@@ -69,6 +70,29 @@ describe('extractValue', () => {
   it('returns null for an empty point', () => {
     const point = { civilStartTime: { date: { year: 2026, month: 6, day: 3 } } };
     expect(extractValue(point, 'steps.countSum')).toBeNull();
+  });
+});
+
+describe('metricValue (azm reducer)', () => {
+  const spec = { valueField: 'activeZoneMinutes', combine: 'azm' as const };
+
+  it('weights cardio/peak double, fat burn single', () => {
+    const point = { activeZoneMinutes: { sumInFatBurnHeartZone: '3', sumInCardioHeartZone: '2', sumInPeakHeartZone: '1' } };
+    expect(metricValue(point, spec)).toBe(3 + 2 * 2 + 2 * 1); // = 9
+  });
+
+  it('handles the single-fat-burn-minute case (real Fitbit Air data)', () => {
+    const point = { activeZoneMinutes: { sumInCardioHeartZone: '0', sumInPeakHeartZone: '0', sumInFatBurnHeartZone: '1' } };
+    expect(metricValue(point, spec)).toBe(1);
+  });
+
+  it('returns null when the AZM object is absent (empty day)', () => {
+    expect(metricValue({ civilStartTime: { date: { year: 2026, month: 6, day: 4 } } }, spec)).toBeNull();
+  });
+
+  it('falls back to plain extraction when no combine strategy', () => {
+    const point = { steps: { countSum: '8034' } };
+    expect(metricValue(point, { valueField: 'steps.countSum' })).toBe(8034);
   });
 });
 

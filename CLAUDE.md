@@ -27,6 +27,10 @@ OAuth-bootstrap / atomic-token-write / in-memory-cache / retry idioms).
     `daily-resting-heart-rate`. `steps`/`distance` are as-named. A wrong ID 400s with "Invalid
     data type ID referenced…". Other verified types: `heart-rate` (rollup → avg/max/min),
     `floors`, `total-calories`, `sleep`.
+  - **`active-zone-minutes` is per-heart-zone, not a single sum:** the value object is
+    `{sumInFatBurnHeartZone, sumInCardioHeartZone, sumInPeakHeartZone}` (strings). `DATA_TYPES`
+    marks it `combine:'azm'` and `lib/civil.ts:metricValue` reduces to Fitbit's weighted total
+    (fatBurn×1 + cardio×2 + peak×2). It's a Fitbit/Pixel metric — empty from Apple Watch.
   - **DO NOT use `total-calories` for "calories burned".** From the Apple Watch import it carries
     only basal/resting energy — a flat near-constant (~1704 kcal/day, identical to 4 decimals
     across days; verified) with NO active component. Use **`active-energy-burned`**, which varies

@@ -60,6 +60,7 @@ export interface DataTypeSpec {
   unit: string;            // raw unit of the extracted value
   valueField: string;      // dotted path into a point to the scalar value
   dateField: string;       // dotted path into a point to its {year,month,day}
+  combine?: 'azm';         // special multi-field reducer (see lib/civil.ts:metricValue)
 }
 
 export const DATA_TYPES: Record<string, DataTypeSpec> = {
@@ -69,7 +70,9 @@ export const DATA_TYPES: Record<string, DataTypeSpec> = {
   // is basal-only and reports a flat near-constant (~1704 kcal/day) with no active component;
   // active-energy-burned varies with movement and is what a user means by "calories burned".
   activeCalories:    { key: 'activeCalories',    dataType: 'active-energy-burned',      method: 'rollup', unit: 'kcal',  valueField: 'activeEnergyBurned.kcalSum',           dateField: 'civilStartTime.date' },
-  activeZoneMinutes: { key: 'activeZoneMinutes', dataType: 'active-zone-minutes',       method: 'rollup', unit: 'AZM',   valueField: 'activeZoneMinutes.minutesSum',         dateField: 'civilStartTime.date' },
+  // AZM comes back per-zone: activeZoneMinutes.{sumInFatBurnHeartZone,sumInCardioHeartZone,sumInPeakHeartZone}
+  // (strings). combine:'azm' reduces it to Fitbit's weighted total (cardio/peak count double).
+  activeZoneMinutes: { key: 'activeZoneMinutes', dataType: 'active-zone-minutes',       method: 'rollup', unit: 'AZM',   valueField: 'activeZoneMinutes',                    dateField: 'civilStartTime.date', combine: 'azm' },
   floors:            { key: 'floors',            dataType: 'floors',                    method: 'rollup', unit: 'floors',valueField: 'floors.countSum',                      dateField: 'civilStartTime.date' },
   restingHeartRate:  { key: 'restingHeartRate',  dataType: 'daily-resting-heart-rate',  method: 'list',   unit: 'bpm',   valueField: 'dailyRestingHeartRate.beatsPerMinute', dateField: 'dailyRestingHeartRate.date' },
   // avg/max/min all roll up from the same `heart-rate` call (cached by the client, so 1 network hit).

@@ -87,6 +87,29 @@ function firstNumericLeaf(v: unknown): number | null {
   return null;
 }
 
+/**
+ * Resolve a metric's scalar value for a point, honoring special reducers.
+ * - combine 'azm': Active Zone Minutes come back per-heart-zone; reduce to Fitbit's weighted
+ *   total (1 AZM per Fat Burn minute, 2 per Cardio/Peak minute). Returns null if the AZM object
+ *   is absent (empty day), 0 if present but all zones zero.
+ * - otherwise: extract the scalar at spec.valueField (with first-numeric-leaf fallback).
+ */
+export function metricValue(
+  point: Record<string, unknown>,
+  spec: { valueField: string; combine?: string },
+): number | null {
+  if (spec.combine === 'azm') {
+    const az = getAtPath(point, 'activeZoneMinutes');
+    if (!az || typeof az !== 'object') return null;
+    const o = az as Record<string, unknown>;
+    const fat = toNumber(o.sumInFatBurnHeartZone) ?? 0;
+    const cardio = toNumber(o.sumInCardioHeartZone) ?? 0;
+    const peak = toNumber(o.sumInPeakHeartZone) ?? 0;
+    return fat + 2 * cardio + 2 * peak;
+  }
+  return extractValue(point, spec.valueField);
+}
+
 /** Read a {year,month,day} civil date from a dotted path on a point. */
 export function civilFromPath(point: Record<string, unknown>, dateField: string): CivilDate | null {
   const d = getAtPath(point, dateField);

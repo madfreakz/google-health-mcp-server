@@ -9,7 +9,7 @@ import {
   civilToISODate,
   isoDateToCivil,
   civilFromPath,
-  extractValue,
+  metricValue,
 } from '../lib/civil';
 
 function daysInclusive(a: CivilDate, b: CivilDate): number {
@@ -60,7 +60,7 @@ export async function buildDailySummary(
       byDate.get(date)!.metrics[key] = {
         key,
         unit: spec.unit,
-        value: extractValue(p, spec.valueField),
+        value: metricValue(p, spec),
         raw: p,
       };
     }
