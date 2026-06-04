@@ -14,7 +14,7 @@
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.markfok.google-health-sync</string>
+    <string>com.example.google-health-sync</string>
 
     <key>ProgramArguments</key>
     <array>

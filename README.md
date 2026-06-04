@@ -1,4 +1,10 @@
-# google-health-mcp-server
+# 🩺 google-health-mcp-server
+
+**Hand your whole-body health data to your AI — steps, distance, heart rate, and more from Apple Watch, Fitbit, or Pixel Watch, unified through Google Health.**
+
+![MCP](https://img.shields.io/badge/protocol-MCP-6E56CF?style=flat-square)
+![Google Health API v4](https://img.shields.io/badge/Google%20Health%20API-v4-4285F4?style=flat-square)
+![License: MIT](https://img.shields.io/badge/license-MIT-green?style=flat-square)
 
 An MCP server for the **Google Health API v4** — read your daily activity, sleep, heart
 rate, and body metrics from any source connected to Google Health (Apple Watch import,

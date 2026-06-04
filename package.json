@@ -4,6 +4,26 @@
   "description": "MCP server for the Google Health API v4 (Fitbit / Pixel Watch / Apple Watch via Google Health) + Obsidian sync",
   "type": "commonjs",
   "main": "dist/index.js",
+  "author": "Mark Fok",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/madfreakz/google-health-mcp-server.git"
+  },
+  "homepage": "https://github.com/madfreakz/google-health-mcp-server#readme",
+  "bugs": "https://github.com/madfreakz/google-health-mcp-server/issues",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "google-health",
+    "fitbit",
+    "apple-watch",
+    "pixel-watch",
+    "health",
+    "quantified-self",
+    "claude",
+    "obsidian"
+  ],
   "scripts": {
     "build": "tsc --noCheck",
     "build:watch": "tsc --noCheck --watch",
