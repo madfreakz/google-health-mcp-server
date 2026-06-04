@@ -1,4 +1,4 @@
-import { CivilDate, RollupDataPoint } from '../types';
+import { CivilDate } from '../types';
 
 /** Local-calendar civil date for a JS Date (uses the host timezone, like the watch's day). */
 export function dateToCivil(d: Date): CivilDate {
@@ -34,46 +34,66 @@ export function isoDateToCivil(s: string): CivilDate {
   return { year: Number(y), month: Number(mo), day: Number(d) };
 }
 
+/** Walk a dotted path; returns the value or undefined. */
+export function getAtPath(obj: unknown, dotted: string): unknown {
+  let cur: unknown = obj;
+  for (const seg of dotted.split('.')) {
+    if (cur == null || typeof cur !== 'object') return undefined;
+    cur = (cur as Record<string, unknown>)[seg];
+  }
+  return cur;
+}
+
+/** Coerce a finite number or a numeric string (the API returns int64 as a string). */
+export function toNumber(v: unknown): number | null {
+  if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+  if (typeof v === 'string' && v.trim() !== '') {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+
 /**
- * Pull a scalar out of a rollup point.
+ * Pull a scalar out of a data point.
  *
- * Tries the configured `scoreField` dotted path first (e.g. "steps.count_sum").
- * If that misses — the API's union field names are still settling in beta — it
- * falls back to the first finite numeric leaf found under the metric object,
- * skipping the civil-time stamps. Returns null when the bucket has no value
- * (Google omits the field entirely for empty intervals).
+ * Tries the configured `valueField` dotted path first (e.g. "steps.countSum"), then
+ * falls back to the first numeric leaf under any non-metadata field — so an unforeseen
+ * shape never silently drops a value. The raw point is always returned alongside, so
+ * nothing is lost even if a mapping needs adjusting. Returns null for an empty point.
  */
-export function extractDailyValue(
-  point: RollupDataPoint,
-  scoreField?: string,
-): number | null {
-  if (scoreField) {
-    const viaPath = getNumberAtPath(point, scoreField);
+export function extractValue(point: Record<string, unknown>, valueField?: string): number | null {
+  if (valueField) {
+    const viaPath = toNumber(getAtPath(point, valueField));
     if (viaPath !== null) return viaPath;
   }
   for (const [k, v] of Object.entries(point)) {
-    if (k === 'civilStartTime' || k === 'civilEndTime') continue;
+    if (k === 'civilStartTime' || k === 'civilEndTime' || k === 'dataSource') continue;
     const leaf = firstNumericLeaf(v);
     if (leaf !== null) return leaf;
   }
   return null;
 }
 
-function getNumberAtPath(obj: unknown, dotted: string): number | null {
-  let cur: unknown = obj;
-  for (const seg of dotted.split('.')) {
-    if (cur == null || typeof cur !== 'object') return null;
-    cur = (cur as Record<string, unknown>)[seg];
-  }
-  return typeof cur === 'number' && Number.isFinite(cur) ? cur : null;
-}
-
 function firstNumericLeaf(v: unknown): number | null {
-  if (typeof v === 'number' && Number.isFinite(v)) return v;
+  const n = toNumber(v);
+  if (n !== null) return n;
   if (v && typeof v === 'object') {
     for (const val of Object.values(v as Record<string, unknown>)) {
       const leaf = firstNumericLeaf(val);
       if (leaf !== null) return leaf;
+    }
+  }
+  return null;
+}
+
+/** Read a {year,month,day} civil date from a dotted path on a point. */
+export function civilFromPath(point: Record<string, unknown>, dateField: string): CivilDate | null {
+  const d = getAtPath(point, dateField);
+  if (d && typeof d === 'object') {
+    const o = d as Record<string, unknown>;
+    if (typeof o.year === 'number' && typeof o.month === 'number' && typeof o.day === 'number') {
+      return { year: o.year, month: o.month, day: o.day };
     }
   }
   return null;

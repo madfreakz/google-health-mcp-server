@@ -224,6 +224,19 @@ async function request<T>(config: AxiosRequestConfig, retry: RequestRetryState =
 
 // ---- API methods ----
 
+/**
+ * The API's `range.start`/`range.end` are CivilDateTime messages — a nested
+ * `{ date: {year,month,day}, time: {hours,minutes,seconds,nanos} }` — NOT a bare
+ * civil date. (The published dailyRollUp doc example showing a flat {year,month,day}
+ * is wrong; the live API rejects it with "Unknown name 'year' at 'range.start'".)
+ */
+function civilDateTime(c: CivilDate) {
+  return {
+    date: { year: c.year, month: c.month, day: c.day },
+    time: { hours: 0, minutes: 0, seconds: 0, nanos: 0 },
+  };
+}
+
 /** Daily rolled-up buckets for one dataType across a civil-date range (end exclusive). */
 export async function dailyRollUp(
   dataType: string,
@@ -240,10 +253,12 @@ export async function dailyRollUp(
       const resp = await request<DailyRollUpResponse>({
         method: 'POST',
         url: `/${GH_USER}/dataTypes/${dataType}/dataPoints:dailyRollUp`,
+        // NOTE: pageSize is intentionally omitted — the :dailyRollUp endpoint rejects it with
+        // a 400 "Invalid argument" (verified live 2026-06-03). Daily buckets are tiny, so a
+        // single page covers any realistic window; we still follow nextPageToken if present.
         data: {
-          range: { start, end },
+          range: { start: civilDateTime(start), end: civilDateTime(end) },
           windowSizeDays: opts.windowSizeDays ?? 1,
-          pageSize: DEFAULT_PAGE_SIZE,
           pageToken,
           dataSourceFamily: opts.dataSourceFamily ?? GH_SOURCE_ALL,
         },

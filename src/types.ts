@@ -23,9 +23,15 @@ export interface CivilDate {
 }
 
 // ---- dailyRollUp wire shapes ----
+// range.start/range.end are CivilDateTime messages: a nested civil date + time-of-day.
+export interface CivilDateTime {
+  date: CivilDate;
+  time: { hours: number; minutes: number; seconds: number; nanos: number };
+}
+
 export interface CivilTimeInterval {
-  start: CivilDate;
-  end: CivilDate; // exclusive upper bound
+  start: CivilDateTime;
+  end: CivilDateTime; // exclusive upper bound
 }
 
 export interface DailyRollUpRequest {
@@ -42,8 +48,8 @@ export interface DailyRollUpRequest {
  * extract a scalar best-effort, so an unknown shape never drops data.
  */
 export interface RollupDataPoint {
-  civilStartTime?: CivilDate;
-  civilEndTime?: CivilDate;
+  civilStartTime?: CivilDateTime;
+  civilEndTime?: CivilDateTime;
   [metric: string]: unknown;
 }
 
@@ -85,10 +91,10 @@ export interface ListPairedDevicesResponse {
 export interface DailyMetric {
   key: string;
   unit: string;
-  /** Best-effort scalar; null when the rollup bucket carried no value. */
+  /** Best-effort scalar; null when the point carried no value. */
   value: number | null;
-  /** The raw rollup point, kept so nothing is lost to a mapping guess. */
-  raw: RollupDataPoint;
+  /** The raw point (rollup or list), kept so nothing is lost to a mapping guess. */
+  raw: Record<string, unknown>;
 }
 
 export interface DailySummaryDay {

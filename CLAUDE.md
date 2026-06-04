@@ -16,18 +16,33 @@ OAuth-bootstrap / atomic-token-write / in-memory-cache / retry idioms).
   *first* consent, which is why the authorize URL sets `access_type=offline` **and**
   `prompt=consent`. If a user re-auths and gets no refresh_token, they must revoke at
   <https://myaccount.google.com/permissions> first.
-- **The API is beta; union field names are not pinned.** Daily rollup points carry the metric
-  in a union field (e.g. `steps: {count_sum}`). `src/lib/civil.ts:extractDailyValue` tries the
-  configured `scoreField` dotted path, then falls back to the first numeric leaf. The raw point
-  is ALWAYS returned alongside the normalized value — never drop it. If a summary value reads as
-  `—` but data exists, fix the `scoreField` in `src/constants.ts:DATA_TYPES` against the raw point.
-- **Civil dates, not timestamps, for rollups.** The `:dailyRollUp` request takes a
-  `CivilTimeInterval` ({year,month,day}, end exclusive). All date math is in `src/lib/civil.ts`
-  and is host-timezone-local (matches the watch's notion of "a day"). Keep it unit-tested.
-- **The list-endpoint filter field name is a guess.** `src/tools/raw.ts:buildFilter` uses
-  `endTime >= "…" AND endTime < "…"`. If the API 400s on it, adjust the field name; callers can
-  pass a raw `filter` to override. The `:dailyRollUp` path (structured `range`) is the reliable
-  one — prefer it.
+- **The published v4 docs were WRONG on several points — these were verified against the live API
+  on 2026-06-03 (see `DATA_TYPES` in `src/constants.ts`):**
+  - dataType IDs are **kebab-case** and not the obvious names: calories = `total-calories`,
+    active minutes = `active-zone-minutes`, resting HR = `daily-resting-heart-rate`. `steps` and
+    `distance` are as-named. A wrong ID 400s with "Invalid data type ID referenced…".
+  - `:dailyRollUp` **`range.start`/`range.end` are nested `CivilDateTime`** —
+    `{date:{year,month,day}, time:{hours,minutes,seconds,nanos}}` — NOT a flat `{year,month,day}`
+    (the doc example is wrong; a flat date 400s with "Unknown name 'year' at 'range.start'").
+    Built by `client.ts:civilDateTime`.
+  - **Do NOT send `pageSize` to `:dailyRollUp`** — it 400s with "Invalid argument in request".
+    (List endpoint accepts pageSize fine.)
+  - **`dataSourceFamily: users/me/dataSourceFamilies/all-sources`** is what surfaces the Apple
+    Watch (HEALTH_KIT) import. `google-wearables` is Fitbit/Pixel only.
+  - Values come back **camelCase, and int64s are STRINGS** (`steps.countSum:"8034"`,
+    `distance.millimetersSum:"…"` — note millimetres). `kcalSum` is a real number.
+    `civilStartTime.date` is nested. `lib/civil.ts:extractValue` coerces strings; `civilFromPath`
+    reads the embedded date. The raw point is ALWAYS returned alongside — never drop it.
+- **Resting HR and sleep do NOT support `:dailyRollUp`** (the API says use list/get/reconcile).
+  `DATA_TYPES[].method` is `'rollup'` or `'list'`; `summary.ts:buildDailySummary` dispatches on it.
+  List-method metrics carry their own embedded date (e.g. `dailyRestingHeartRate.date`), so we
+  list recent points and clip to the window. Sleep is not modeled yet (empty until a device logs
+  it — re-check the shape against live data once the Fitbit Air syncs).
+- **The list-endpoint `filter` grammar is unknown.** `endTime >= "…"` 400s with
+  INVALID_DATA_POINT_FILTER_RESTRICTION_COMPARABLE. `list_data_points` lists most-recent and
+  exposes a raw `filter` passthrough only. For date windows, use the rollup-based summary.
+- **Civil date math** lives in `src/lib/civil.ts`, host-timezone-local (matches the watch's notion
+  of "a day"), and is unit-tested. Keep it that way.
 - **MCP SDK deep-instantiation.** `registerTool` trips TS2589 when a raw zod shape contains
   `z.array()`/`z.boolean()`, and the error hops between calls as TS's depth budget shifts. Fixed
   by casting those `inputSchema` refs `as any` in `src/index.ts` (compile-time only — the real

@@ -1,6 +1,6 @@
-import { listPairedDevices, dailyRollUp, grantedScopes } from '../client';
+import { listPairedDevices, dailyRollUp, listDataPoints, grantedScopes } from '../client';
 import { DATA_TYPES, GH_SCOPES, GH_SOURCE_ALL, OBSIDIAN_VAULT_PATH } from '../constants';
-import { civilDaysAgo, civilNextDay } from '../lib/civil';
+import { civilDaysAgo, civilNextDay, extractValue } from '../lib/civil';
 import { ToolResult } from '../types';
 
 // ---- list_paired_devices ----
@@ -34,16 +34,17 @@ export async function connectionStatus(): Promise<ToolResult> {
   const granted = new Set(grantedScopes());
   const missing = GH_SCOPES.filter(s => !granted.has(s));
 
-  // Probe each metric over the last 7 days; report which have any data.
+  // Probe each metric over the last 7 days; report which have any data. Dispatches per metric:
+  // rollup types hit :dailyRollUp, list types (e.g. resting HR) list recent points.
   const start = civilDaysAgo(6);
   const end = civilNextDay(civilDaysAgo(0));
   const probes = await Promise.all(
     Object.values(DATA_TYPES).map(async spec => {
       try {
-        const pts = await dailyRollUp(spec.dataType, start, end, { dataSourceFamily: GH_SOURCE_ALL });
-        const withValue = pts.filter(p =>
-          Object.keys(p).some(k => k !== 'civilStartTime' && k !== 'civilEndTime'),
-        ).length;
+        const pts: Array<Record<string, unknown>> = spec.method === 'rollup'
+          ? await dailyRollUp(spec.dataType, start, end, { dataSourceFamily: GH_SOURCE_ALL })
+          : await listDataPoints(spec.dataType, { pageSize: 12, maxPages: 1 });
+        const withValue = pts.filter(p => extractValue(p, spec.valueField) !== null).length;
         return { key: spec.key, ok: true, days: withValue };
       } catch (e) {
         return { key: spec.key, ok: false, error: e instanceof Error ? e.message : String(e) };

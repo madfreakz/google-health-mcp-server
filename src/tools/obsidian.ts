@@ -44,12 +44,10 @@ function frontmatterField(m: DailyMetric): [string, number] | null {
   if (m.value === null) return null;
   switch (m.key) {
     case 'steps': return ['steps', Math.round(m.value)];
-    case 'distance': return ['distance_km', Number((m.value / 1000).toFixed(2))];
+    case 'distance': return ['distance_km', Number((m.value / 1_000_000).toFixed(2))]; // mm → km
     case 'calories': return ['calories', Math.round(m.value)];
-    case 'activeMinutes': return ['active_minutes', Math.round(m.value)];
-    case 'heartRate': return ['heart_rate_avg', Math.round(m.value)];
+    case 'activeZoneMinutes': return ['active_zone_minutes', Math.round(m.value)];
     case 'restingHeartRate': return ['resting_hr', Math.round(m.value)];
-    case 'sleep': return ['sleep_hours', Number((m.value / 60).toFixed(2))];
     default: return [m.key, m.value];
   }
 }
@@ -88,19 +86,17 @@ function renderDashboard(days: DailySummaryDay[]): string {
 
   const block = (label: string, subset: DailySummaryDay[]): string => {
     const steps = avg(valuesFor(subset, 'steps'));
-    const distKm = valuesFor(subset, 'distance').reduce((a, b) => a + b, 0) / 1000;
+    const distKm = valuesFor(subset, 'distance').reduce((a, b) => a + b, 0) / 1_000_000; // mm → km
     const cals = avg(valuesFor(subset, 'calories'));
-    const active = avg(valuesFor(subset, 'activeMinutes'));
+    const azm = avg(valuesFor(subset, 'activeZoneMinutes'));
     const restHr = avg(valuesFor(subset, 'restingHeartRate'));
-    const sleepH = avg(valuesFor(subset, 'sleep'));
     return [
       `### ${label} (${subset.length} day${subset.length === 1 ? '' : 's'})`,
       `- Avg steps: ${steps != null ? Math.round(steps).toLocaleString() : '—'}`,
       `- Total distance: ${distKm ? distKm.toFixed(1) + ' km' : '—'}`,
-      `- Avg active calories: ${cals != null ? Math.round(cals) + ' kcal' : '—'}`,
-      `- Avg active minutes: ${active != null ? Math.round(active) : '—'}`,
+      `- Avg total calories: ${cals != null ? Math.round(cals) + ' kcal' : '—'}`,
+      `- Avg active-zone minutes: ${azm != null ? Math.round(azm) : '—'}`,
       `- Avg resting HR: ${restHr != null ? Math.round(restHr) + ' bpm' : '—'}`,
-      `- Avg sleep: ${sleepH != null ? (sleepH / 60).toFixed(1) + ' h' : '—'}`,
       '',
     ].join('\n');
   };

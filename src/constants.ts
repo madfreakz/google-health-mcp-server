@@ -42,31 +42,37 @@ export const GH_SCOPES = [
 ];
 
 // ---- dataType registry ----
-// Maps a friendly key → the Google Health `dataType` path segment and the
-// rollup value field we extract for daily summaries. Field names are the API's
-// best-documented shapes; `extractDailyValue` degrades gracefully if a shape
-// differs, and the raw rollup point is always returned alongside the normalized
-// value so nothing is lost if a mapping needs adjusting against live data.
+// Maps a friendly key → the Google Health `dataType` path segment, the retrieval
+// method, and the dotted paths to the value + day for each returned point. All IDs,
+// field names, and methods below were VERIFIED against the live v4 API on 2026-06-03
+// (the published docs were partly wrong). Notes:
+//   - `rollup` types use the :dailyRollUp endpoint; their day is in civilStartTime.date.
+//   - `list` types don't support rollup (the API rejects it); we list recent points and
+//     bucket by the point's own embedded date.
+//   - int64 fields come back as STRINGS (e.g. countSum:"8034"); extractValue coerces them.
+//   - distance is millimetres; sleep is not modeled yet (empty until a device logs it).
+export type RetrievalMethod = 'rollup' | 'list';
+
 export interface DataTypeSpec {
-  key: string;          // friendly name used in tool args / summaries
-  dataType: string;     // path segment: users/me/dataTypes/<dataType>
-  unit: string;         // human-readable unit for display
-  scoreField?: string;  // dotted path into a rollup point's value object
+  key: string;             // friendly name used in tool args / summaries
+  dataType: string;        // path segment: users/me/dataTypes/<dataType>
+  method: RetrievalMethod;
+  unit: string;            // raw unit of the extracted value
+  valueField: string;      // dotted path into a point to the scalar value
+  dateField: string;       // dotted path into a point to its {year,month,day}
 }
 
 export const DATA_TYPES: Record<string, DataTypeSpec> = {
-  steps:            { key: 'steps',            dataType: 'steps',              unit: 'steps', scoreField: 'steps.count_sum' },
-  distance:         { key: 'distance',         dataType: 'distance',           unit: 'm',     scoreField: 'distance.distance_sum' },
-  calories:         { key: 'calories',         dataType: 'activeEnergyBurned', unit: 'kcal',  scoreField: 'activeEnergyBurned.energy_sum' },
-  activeMinutes:    { key: 'activeMinutes',    dataType: 'activeMinutes',      unit: 'min',   scoreField: 'activeMinutes.duration_sum' },
-  heartRate:        { key: 'heartRate',        dataType: 'heartRate',          unit: 'bpm',   scoreField: 'heartRate.bpm_average' },
-  restingHeartRate: { key: 'restingHeartRate', dataType: 'restingHeartRate',   unit: 'bpm',   scoreField: 'restingHeartRate.bpm' },
-  sleep:            { key: 'sleep',            dataType: 'sleep',              unit: 'min',   scoreField: 'sleep.duration_sum' },
+  steps:             { key: 'steps',             dataType: 'steps',                     method: 'rollup', unit: 'steps', valueField: 'steps.countSum',                     dateField: 'civilStartTime.date' },
+  distance:          { key: 'distance',          dataType: 'distance',                  method: 'rollup', unit: 'mm',    valueField: 'distance.millimetersSum',            dateField: 'civilStartTime.date' },
+  calories:          { key: 'calories',          dataType: 'total-calories',            method: 'rollup', unit: 'kcal',  valueField: 'totalCalories.kcalSum',              dateField: 'civilStartTime.date' },
+  activeZoneMinutes: { key: 'activeZoneMinutes', dataType: 'active-zone-minutes',       method: 'rollup', unit: 'AZM',   valueField: 'activeZoneMinutes.minutesSum',       dateField: 'civilStartTime.date' },
+  restingHeartRate:  { key: 'restingHeartRate',  dataType: 'daily-resting-heart-rate',  method: 'list',   unit: 'bpm',   valueField: 'dailyRestingHeartRate.beatsPerMinute', dateField: 'dailyRestingHeartRate.date' },
 };
 
 // The default panel pulled by get_daily_summary.
 export const DEFAULT_SUMMARY_KEYS = [
-  'steps', 'distance', 'calories', 'activeMinutes', 'restingHeartRate', 'sleep',
+  'steps', 'distance', 'calories', 'activeZoneMinutes', 'restingHeartRate',
 ];
 
 // ---- HTTP behavior ----

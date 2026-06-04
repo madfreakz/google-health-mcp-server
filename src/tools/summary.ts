@@ -1,18 +1,27 @@
 import { z } from 'zod';
 
-import { dailyRollUp } from '../client';
-import { DATA_TYPES, DEFAULT_SUMMARY_KEYS, GH_SOURCE_ALL, BETA_NOTICE } from '../constants';
-import { CivilDate, DailyMetric, DailySummaryDay, RollupDataPoint, ToolResult } from '../types';
+import { dailyRollUp, listDataPoints } from '../client';
+import { DATA_TYPES, DEFAULT_SUMMARY_KEYS, GH_SOURCE_ALL, BETA_NOTICE, MAX_PAGE_SIZE } from '../constants';
+import { CivilDate, DailyMetric, DailySummaryDay, ToolResult } from '../types';
 import {
   civilDaysAgo,
   civilNextDay,
   civilToISODate,
   isoDateToCivil,
-  extractDailyValue,
+  civilFromPath,
+  extractValue,
 } from '../lib/civil';
+
+function daysInclusive(a: CivilDate, b: CivilDate): number {
+  const da = Date.UTC(a.year, a.month - 1, a.day);
+  const db = Date.UTC(b.year, b.month - 1, b.day);
+  return Math.round((db - da) / 86_400_000) + 1;
+}
 
 /**
  * Build a per-day summary across the requested metric keys for [startCivil, endCivilInclusive].
+ * Dispatches per metric: `rollup` types use :dailyRollUp; `list` types (e.g. resting HR) are
+ * listed recent and bucketed by each point's own embedded date, then clipped to the window.
  * Reused by both the get_daily_summary tool and the Obsidian sync.
  */
 export async function buildDailySummary(
@@ -22,30 +31,38 @@ export async function buildDailySummary(
   dataSourceFamily: string = GH_SOURCE_ALL,
 ): Promise<DailySummaryDay[]> {
   const endExclusive = civilNextDay(endCivilInclusive);
+  const startISO = civilToISODate(startCivil);
+  const endISO = civilToISODate(endCivilInclusive);
   const byDate = new Map<string, DailySummaryDay>();
 
   for (const key of keys) {
     const spec = DATA_TYPES[key];
     if (!spec) continue;
-    let points: RollupDataPoint[];
+    let points: Array<Record<string, unknown>> = [];
     try {
-      points = await dailyRollUp(spec.dataType, startCivil, endExclusive, { dataSourceFamily });
-    } catch (e) {
-      // One unavailable metric (e.g. a scope not granted, or a type the device
-      // doesn't produce) shouldn't sink the whole summary.
+      if (spec.method === 'rollup') {
+        points = await dailyRollUp(spec.dataType, startCivil, endExclusive, { dataSourceFamily });
+      } else {
+        // No server-side date filter (the API rejects our filter syntax); list recent and clip.
+        const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(31, daysInclusive(startCivil, endCivilInclusive) + 5));
+        points = await listDataPoints(spec.dataType, { pageSize, maxPages: 2 });
+      }
+    } catch {
+      // One unavailable metric (scope/type/source) shouldn't sink the whole summary.
       points = [];
     }
     for (const p of points) {
-      if (!p.civilStartTime) continue;
-      const date = civilToISODate(p.civilStartTime as CivilDate);
+      const civil = civilFromPath(p, spec.dateField);
+      if (!civil) continue;
+      const date = civilToISODate(civil);
+      if (date < startISO || date > endISO) continue; // clip list results to the window
       if (!byDate.has(date)) byDate.set(date, { date, metrics: {} });
-      const metric: DailyMetric = {
+      byDate.get(date)!.metrics[key] = {
         key,
         unit: spec.unit,
-        value: extractDailyValue(p, spec.scoreField),
+        value: extractValue(p, spec.valueField),
         raw: p,
       };
-      byDate.get(date)!.metrics[key] = metric;
     }
   }
 
@@ -54,15 +71,17 @@ export async function buildDailySummary(
 
 function fmtValue(m: DailyMetric | undefined): string {
   if (!m || m.value === null) return '—';
-  // distance comes back in metres; show km for readability.
-  if (m.key === 'distance') return `${(m.value / 1000).toFixed(2)} km`;
-  if (m.key === 'sleep') {
-    const h = Math.floor(m.value / 60);
-    const min = Math.round(m.value % 60);
-    return `${h}h ${min}m`;
+  switch (m.key) {
+    case 'distance': return `${(m.value / 1_000_000).toFixed(2)} km`; // millimetres → km
+    case 'steps': return Math.round(m.value).toLocaleString();
+    case 'calories': return `${Math.round(m.value)} kcal`;
+    case 'restingHeartRate': return `${Math.round(m.value)} bpm`;
+    case 'activeZoneMinutes': return `${Math.round(m.value)} AZM`;
+    default: {
+      const rounded = Number.isInteger(m.value) ? m.value : Number(m.value.toFixed(1));
+      return `${rounded} ${m.unit}`;
+    }
   }
-  const rounded = Number.isInteger(m.value) ? m.value : Number(m.value.toFixed(1));
-  return `${rounded} ${m.unit}`;
 }
 
 function renderSummary(days: DailySummaryDay[], keys: string[]): string {
