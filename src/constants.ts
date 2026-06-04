@@ -70,12 +70,19 @@ export const DATA_TYPES: Record<string, DataTypeSpec> = {
   // active-energy-burned varies with movement and is what a user means by "calories burned".
   activeCalories:    { key: 'activeCalories',    dataType: 'active-energy-burned',      method: 'rollup', unit: 'kcal',  valueField: 'activeEnergyBurned.kcalSum',           dateField: 'civilStartTime.date' },
   activeZoneMinutes: { key: 'activeZoneMinutes', dataType: 'active-zone-minutes',       method: 'rollup', unit: 'AZM',   valueField: 'activeZoneMinutes.minutesSum',         dateField: 'civilStartTime.date' },
+  floors:            { key: 'floors',            dataType: 'floors',                    method: 'rollup', unit: 'floors',valueField: 'floors.countSum',                      dateField: 'civilStartTime.date' },
   restingHeartRate:  { key: 'restingHeartRate',  dataType: 'daily-resting-heart-rate',  method: 'list',   unit: 'bpm',   valueField: 'dailyRestingHeartRate.beatsPerMinute', dateField: 'dailyRestingHeartRate.date' },
+  // avg/max/min all roll up from the same `heart-rate` call (cached by the client, so 1 network hit).
+  heartRateAvg:      { key: 'heartRateAvg',      dataType: 'heart-rate',                method: 'rollup', unit: 'bpm',   valueField: 'heartRate.beatsPerMinuteAvg',          dateField: 'civilStartTime.date' },
+  heartRateMax:      { key: 'heartRateMax',      dataType: 'heart-rate',                method: 'rollup', unit: 'bpm',   valueField: 'heartRate.beatsPerMinuteMax',          dateField: 'civilStartTime.date' },
+  heartRateMin:      { key: 'heartRateMin',      dataType: 'heart-rate',                method: 'rollup', unit: 'bpm',   valueField: 'heartRate.beatsPerMinuteMin',          dateField: 'civilStartTime.date' },
 };
 
-// The default panel pulled by get_daily_summary.
+// The default panel pulled by get_daily_summary. (heartRateMin stays available via the `metrics`
+// arg but is left out of the default to keep the table readable — it tracks resting HR closely.)
 export const DEFAULT_SUMMARY_KEYS = [
-  'steps', 'distance', 'activeCalories', 'activeZoneMinutes', 'restingHeartRate',
+  'steps', 'distance', 'activeCalories', 'activeZoneMinutes', 'floors',
+  'restingHeartRate', 'heartRateAvg', 'heartRateMax',
 ];
 
 // ---- HTTP behavior ----

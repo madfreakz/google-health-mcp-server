@@ -22,11 +22,11 @@ server.registerTool(
   {
     title: 'Get Daily Health Summary',
     description:
-      'Daily rolled-up health metrics (steps, distance, active calories, active minutes, resting ' +
-      'heart rate, sleep) across all connected Google Health sources (Apple Watch import, Fitbit ' +
-      'Air, Pixel Watch). Returns a per-day table plus the raw rollup points. Use start_date/end_date ' +
-      'for an explicit range, or `days` (default 7) for a trailing window. This is the primary tool ' +
-      'for "how have my steps/sleep/resting HR trended" questions.',
+      'Daily health metrics (steps, distance, active calories, active-zone minutes, floors, resting ' +
+      'heart rate, and avg/max heart rate) across all connected Google Health sources (Apple Watch ' +
+      'import, Fitbit Air, Pixel Watch). Returns a per-day table plus the raw points. Use ' +
+      'start_date/end_date for an explicit range, or `days` (default 7) for a trailing window. Pass ' +
+      '`metrics` to pick a subset. This is the primary tool for "how have my steps/HR/calories trended" questions.',
     // `as any`: the MCP SDK's registerTool generic instantiates an excessively deep type when a
     // raw zod shape contains z.array()/z.boolean(). The cast is compile-time only — the real schema
     // object still reaches the SDK at runtime for arg validation. Handler args stay strictly typed.

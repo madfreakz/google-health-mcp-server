@@ -75,7 +75,10 @@ function fmtValue(m: DailyMetric | undefined): string {
     case 'distance': return `${(m.value / 1_000_000).toFixed(2)} km`; // millimetres → km
     case 'steps': return Math.round(m.value).toLocaleString();
     case 'activeCalories': return `${Math.round(m.value)} kcal`;
-    case 'restingHeartRate': return `${Math.round(m.value)} bpm`;
+    case 'restingHeartRate':
+    case 'heartRateAvg':
+    case 'heartRateMax':
+    case 'heartRateMin': return `${Math.round(m.value)} bpm`;
     case 'activeZoneMinutes': return `${Math.round(m.value)} AZM`;
     default: {
       const rounded = Number.isInteger(m.value) ? m.value : Number(m.value.toFixed(1));
