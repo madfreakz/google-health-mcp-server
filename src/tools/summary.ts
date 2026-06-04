@@ -74,7 +74,7 @@ function fmtValue(m: DailyMetric | undefined): string {
   switch (m.key) {
     case 'distance': return `${(m.value / 1_000_000).toFixed(2)} km`; // millimetres → km
     case 'steps': return Math.round(m.value).toLocaleString();
-    case 'calories': return `${Math.round(m.value)} kcal`;
+    case 'activeCalories': return `${Math.round(m.value)} kcal`;
     case 'restingHeartRate': return `${Math.round(m.value)} bpm`;
     case 'activeZoneMinutes': return `${Math.round(m.value)} AZM`;
     default: {

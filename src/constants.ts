@@ -63,16 +63,19 @@ export interface DataTypeSpec {
 }
 
 export const DATA_TYPES: Record<string, DataTypeSpec> = {
-  steps:             { key: 'steps',             dataType: 'steps',                     method: 'rollup', unit: 'steps', valueField: 'steps.countSum',                     dateField: 'civilStartTime.date' },
-  distance:          { key: 'distance',          dataType: 'distance',                  method: 'rollup', unit: 'mm',    valueField: 'distance.millimetersSum',            dateField: 'civilStartTime.date' },
-  calories:          { key: 'calories',          dataType: 'total-calories',            method: 'rollup', unit: 'kcal',  valueField: 'totalCalories.kcalSum',              dateField: 'civilStartTime.date' },
-  activeZoneMinutes: { key: 'activeZoneMinutes', dataType: 'active-zone-minutes',       method: 'rollup', unit: 'AZM',   valueField: 'activeZoneMinutes.minutesSum',       dateField: 'civilStartTime.date' },
+  steps:             { key: 'steps',             dataType: 'steps',                     method: 'rollup', unit: 'steps', valueField: 'steps.countSum',                       dateField: 'civilStartTime.date' },
+  distance:          { key: 'distance',          dataType: 'distance',                  method: 'rollup', unit: 'mm',    valueField: 'distance.millimetersSum',              dateField: 'civilStartTime.date' },
+  // NOTE: use active-energy-burned, NOT total-calories. From the Apple Watch import, total-calories
+  // is basal-only and reports a flat near-constant (~1704 kcal/day) with no active component;
+  // active-energy-burned varies with movement and is what a user means by "calories burned".
+  activeCalories:    { key: 'activeCalories',    dataType: 'active-energy-burned',      method: 'rollup', unit: 'kcal',  valueField: 'activeEnergyBurned.kcalSum',           dateField: 'civilStartTime.date' },
+  activeZoneMinutes: { key: 'activeZoneMinutes', dataType: 'active-zone-minutes',       method: 'rollup', unit: 'AZM',   valueField: 'activeZoneMinutes.minutesSum',         dateField: 'civilStartTime.date' },
   restingHeartRate:  { key: 'restingHeartRate',  dataType: 'daily-resting-heart-rate',  method: 'list',   unit: 'bpm',   valueField: 'dailyRestingHeartRate.beatsPerMinute', dateField: 'dailyRestingHeartRate.date' },
 };
 
 // The default panel pulled by get_daily_summary.
 export const DEFAULT_SUMMARY_KEYS = [
-  'steps', 'distance', 'calories', 'activeZoneMinutes', 'restingHeartRate',
+  'steps', 'distance', 'activeCalories', 'activeZoneMinutes', 'restingHeartRate',
 ];
 
 // ---- HTTP behavior ----

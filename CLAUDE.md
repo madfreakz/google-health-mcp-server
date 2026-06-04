@@ -18,9 +18,15 @@ OAuth-bootstrap / atomic-token-write / in-memory-cache / retry idioms).
   <https://myaccount.google.com/permissions> first.
 - **The published v4 docs were WRONG on several points — these were verified against the live API
   on 2026-06-03 (see `DATA_TYPES` in `src/constants.ts`):**
-  - dataType IDs are **kebab-case** and not the obvious names: calories = `total-calories`,
-    active minutes = `active-zone-minutes`, resting HR = `daily-resting-heart-rate`. `steps` and
-    `distance` are as-named. A wrong ID 400s with "Invalid data type ID referenced…".
+  - dataType IDs are **kebab-case** and not the obvious names: active calories =
+    `active-energy-burned`, active minutes = `active-zone-minutes`, resting HR =
+    `daily-resting-heart-rate`. `steps`/`distance` are as-named. A wrong ID 400s with "Invalid
+    data type ID referenced…". Other verified types: `heart-rate` (rollup → avg/max/min),
+    `floors`, `total-calories`, `sleep`.
+  - **DO NOT use `total-calories` for "calories burned".** From the Apple Watch import it carries
+    only basal/resting energy — a flat near-constant (~1704 kcal/day, identical to 4 decimals
+    across days; verified) with NO active component. Use **`active-energy-burned`**, which varies
+    with movement (key `activeCalories`). `total-calories` is rollup-only (no list).
   - `:dailyRollUp` **`range.start`/`range.end` are nested `CivilDateTime`** —
     `{date:{year,month,day}, time:{hours,minutes,seconds,nanos}}` — NOT a flat `{year,month,day}`
     (the doc example is wrong; a flat date 400s with "Unknown name 'year' at 'range.start'").

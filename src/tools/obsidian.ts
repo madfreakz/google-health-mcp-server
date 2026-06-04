@@ -45,7 +45,7 @@ function frontmatterField(m: DailyMetric): [string, number] | null {
   switch (m.key) {
     case 'steps': return ['steps', Math.round(m.value)];
     case 'distance': return ['distance_km', Number((m.value / 1_000_000).toFixed(2))]; // mm → km
-    case 'calories': return ['calories', Math.round(m.value)];
+    case 'activeCalories': return ['active_calories', Math.round(m.value)];
     case 'activeZoneMinutes': return ['active_zone_minutes', Math.round(m.value)];
     case 'restingHeartRate': return ['resting_hr', Math.round(m.value)];
     default: return [m.key, m.value];
@@ -87,14 +87,14 @@ function renderDashboard(days: DailySummaryDay[]): string {
   const block = (label: string, subset: DailySummaryDay[]): string => {
     const steps = avg(valuesFor(subset, 'steps'));
     const distKm = valuesFor(subset, 'distance').reduce((a, b) => a + b, 0) / 1_000_000; // mm → km
-    const cals = avg(valuesFor(subset, 'calories'));
+    const cals = avg(valuesFor(subset, 'activeCalories'));
     const azm = avg(valuesFor(subset, 'activeZoneMinutes'));
     const restHr = avg(valuesFor(subset, 'restingHeartRate'));
     return [
       `### ${label} (${subset.length} day${subset.length === 1 ? '' : 's'})`,
       `- Avg steps: ${steps != null ? Math.round(steps).toLocaleString() : '—'}`,
       `- Total distance: ${distKm ? distKm.toFixed(1) + ' km' : '—'}`,
-      `- Avg total calories: ${cals != null ? Math.round(cals) + ' kcal' : '—'}`,
+      `- Avg active calories: ${cals != null ? Math.round(cals) + ' kcal' : '—'}`,
       `- Avg active-zone minutes: ${azm != null ? Math.round(azm) : '—'}`,
       `- Avg resting HR: ${restHr != null ? Math.round(restHr) + ' bpm' : '—'}`,
       '',
