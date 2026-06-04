@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.env
+.env.local
+*.log
+
+# Token file (contains client_secret + refresh_token — never commit)
+tokens.json
+.google-health-tokens.json
