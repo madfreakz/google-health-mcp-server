@@ -6,10 +6,14 @@ OAuth-bootstrap / atomic-token-write / in-memory-cache / retry idioms).
 
 ## Known pitfalls
 
-- **Refresh tokens expire after 7 days in OAuth "testing" mode.** This is the #1 operational
-  gotcha. `src/client.ts:refreshTokens` catches the failure and throws a message telling the
-  user to re-run `npm run oauth` or publish the OAuth app to Production. Long-lived tokens
-  require Production publishing status.
+- **Refresh tokens expire after 7 days, and you can't easily fix it.** Google Health scopes are
+  **Restricted**, so publishing the OAuth app to Production (the usual "long-lived token" fix)
+  triggers a mandatory security **verification (CASA)** with no click-through bypass — impractical
+  for one user. So the app stays in **Testing** and the 7-day expiry is permanent. Design around
+  it, don't fight it: `src/client.ts:refreshTokens` throws a clear "re-run npm run oauth" message
+  on expiry; interactive use re-auths lazily (the assistant runs `npm run oauth` when a call
+  reports expiry); the monthly launchd sync is **best-effort** (`src/cli/sync.ts` logs "re-auth
+  needed" and exits 0 if the token lapsed — no crash-loop, no proactive re-auth).
 - **Google does NOT rotate the refresh_token on refresh** (unlike Strava). The refresh
   response usually omits `refresh_token`; `refreshTokens` keeps the existing one
   (`data.refresh_token ?? current.refresh_token`). A refresh_token is only issued on the

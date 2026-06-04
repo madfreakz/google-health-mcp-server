@@ -1,14 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Template launchd plist for daily Google Health sync. To use:
+  Template launchd plist for a MONTHLY best-effort Google Health → Obsidian sync.
+  (Interactive queries via the MCP tools are always live; this just refreshes the
+  Obsidian notes/dashboard periodically.) To use:
   1. Copy to ~/Library/LaunchAgents/com.<you>.google-health-sync.plist (rename label).
   2. Replace every __USERNAME__ with your macOS short username (`whoami`).
   3. If you cloned the repo elsewhere, fix the paths below.
   4. launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/<your-label>.plist
 
-  NOTE: while the OAuth consent screen is in "testing" mode, refresh tokens expire
-  after 7 days, so the cron will start failing weekly until you re-run `npm run oauth`
-  or publish the OAuth app to production. See README.md.
+  NOTE: Google Health uses RESTRICTED OAuth scopes, so a production app would need a
+  full Google security verification (CASA) — impractical for a single user. Keep the
+  consent screen in "Testing" and accept that refresh tokens expire after 7 days. This
+  sync is therefore BEST-EFFORT: if the token has lapsed it logs a "re-auth needed" note
+  and exits without syncing (re-auth lazily with `npm run oauth` next time you use the data).
 -->
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -35,8 +39,11 @@
         <string>/Users/__USERNAME__/Documents/Obsidian Vault</string>
     </dict>
 
+    <!-- Runs on the 1st of each month at 07:05. -->
     <key>StartCalendarInterval</key>
     <dict>
+        <key>Day</key>
+        <integer>1</integer>
         <key>Hour</key>
         <integer>7</integer>
         <key>Minute</key>

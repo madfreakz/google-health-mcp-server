@@ -50,12 +50,16 @@ on your machine at mode `0600`, and no health data leaves your control.
    - `…/auth/googlehealth.sleep.readonly`
    - `…/auth/googlehealth.nutrition.readonly`
 
-> ⚠️ **7-day token caveat.** While the consent screen is in **Testing** status, Google
-> issues refresh tokens that **expire after 7 days** — the daily sync will start failing
-> weekly and you'll need to re-run `npm run oauth`. To get long-lived tokens, **publish the
-> app to Production** (APIs & Services → OAuth consent screen → *Publish app*). For your own
-> single-user use you can click through the "unverified app" warning; full Google
-> verification is only needed to onboard other users.
+> ⚠️ **7-day token caveat (and why you should stay in Testing).** While the consent screen is
+> in **Testing** status, Google issues refresh tokens that **expire after 7 days**. You might
+> expect to fix this by publishing to **Production** — but the Google Health scopes are Google's
+> **Restricted** tier, and Restricted scopes in Production require a full security **verification
+> (CASA assessment)**. There is *no* "click through the unverified warning" bypass for Restricted
+> scopes (that bypass only exists for *Sensitive* scopes). Verification is impractical for a
+> single-user personal tool, so the recommended setup is: **keep the app in Testing, add yourself
+> as a Test user, and accept the 7-day expiry.** Re-authorize lazily — only when you actually use
+> the data and a call reports the token has lapsed — by re-running `npm run oauth` (a ~10s browser
+> approve). Don't bother re-authing in weeks you don't touch the data.
 
 ### 3. OAuth credentials
 
@@ -108,18 +112,22 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` and res
 The runtime reads the client ID/secret back from the tokens file, so they don't need to be
 in the MCP `env` block — only the token path and (optionally) the vault path.
 
-## Daily Obsidian sync (optional)
+## Obsidian sync (optional)
 
-Set `OBSIDIAN_VAULT_PATH`, then either call `sync_health_to_obsidian` from Claude or run the
-CLI / a launchd cron:
+Interactive queries via the MCP tools are always live and pull on demand. The Obsidian notes +
+dashboard only need a periodic refresh, so set `OBSIDIAN_VAULT_PATH` and either call
+`sync_health_to_obsidian` from Claude or run the CLI:
 
 ```bash
 npm run sync                  # incremental sync since last run
 ```
 
-A launchd template is in `launchd/`. Copy it to `~/Library/LaunchAgents/`, replace
-`__USERNAME__`, and `launchctl bootstrap gui/$(id -u) <plist>`. (Remember the 7-day token
-caveat above — the cron fails weekly until the OAuth app is in Production.)
+For an automated **monthly** refresh, a launchd template is in `launchd/`. Copy it to
+`~/Library/LaunchAgents/`, replace `__USERNAME__`, and
+`launchctl bootstrap gui/$(id -u) <plist>`. It runs on the 1st of each month and is
+**best-effort**: if the 7-day token has lapsed it logs a "re-auth needed" note and exits cleanly
+(no crash-loop), and you re-auth lazily next time you use the data. A daily cron isn't worth it
+given the token expiry — monthly + on-demand is the pragmatic cadence.
 
 ## Develop
 
