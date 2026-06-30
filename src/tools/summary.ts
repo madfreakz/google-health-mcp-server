@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { dailyRollUp, listDataPoints } from '../client';
+import { dailyRollUp, listDataPoints, isReauthError } from '../client';
 import { DATA_TYPES, DEFAULT_SUMMARY_KEYS, GH_SOURCE_ALL, BETA_NOTICE, MAX_PAGE_SIZE } from '../constants';
 import { CivilDate, DailyMetric, DailySummaryDay, ToolResult } from '../types';
 import {
@@ -47,7 +47,10 @@ export async function buildDailySummary(
         const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(31, daysInclusive(startCivil, endCivilInclusive) + 5));
         points = await listDataPoints(spec.dataType, { pageSize, maxPages: 2 });
       }
-    } catch {
+    } catch (err) {
+      // An expired/missing token must propagate — it isn't a per-metric condition,
+      // and swallowing it here hides "re-auth needed" behind a misleading "no data".
+      if (isReauthError(err)) throw err;
       // One unavailable metric (scope/type/source) shouldn't sink the whole summary.
       points = [];
     }

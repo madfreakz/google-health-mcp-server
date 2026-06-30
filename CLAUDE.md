@@ -12,8 +12,21 @@ OAuth-bootstrap / atomic-token-write / in-memory-cache / retry idioms).
   for one user. So the app stays in **Testing** and the 7-day expiry is permanent. Design around
   it, don't fight it: `src/client.ts:refreshTokens` throws a clear "re-run npm run oauth" message
   on expiry; interactive use re-auths lazily (the assistant runs `npm run oauth` when a call
-  reports expiry); the monthly launchd sync is **best-effort** (`src/cli/sync.ts` logs "re-auth
-  needed" and exits 0 if the token lapsed — no crash-loop, no proactive re-auth).
+  reports expiry); the launchd sync (every 4 days, see `launchd/`) is **best-effort** —
+  `src/cli/sync.ts` logs "re-auth needed", fires a macOS notification via `osascript`, and exits 0
+  if the token lapsed (no crash-loop, no proactive re-auth). The 4-day cadence only narrows the
+  staleness window; it can't extend the refresh token's life (only an interactive `npm run oauth`
+  does that), so don't "fix" empty data by tightening the interval further — there's a hard floor
+  set by how often Mark is willing to click through a browser consent screen.
+- **`buildDailySummary`'s per-metric `catch` must re-throw auth failures (fixed 2026-06-29).**
+  `src/tools/summary.ts` swallows per-metric errors so one unavailable dataType (e.g. AZM on an
+  Apple Watch) doesn't sink the whole summary — but a blanket `catch { points = [] }` was also
+  swallowing "Token refresh failed", so an expired token silently rendered as "no data" instead of
+  surfacing the real error. This broke re-auth detection everywhere: `get_daily_summary` looked
+  like an empty range instead of erroring, and the launchd cron's "re-auth needed" branch in
+  `sync.ts` never fired because the error never escaped `buildDailySummary`. Fixed by
+  `client.ts:isReauthError(err)` — checked first in the catch, re-thrown if true, only genuine
+  per-metric gaps are swallowed. If you touch this catch again, keep that check first.
 - **Google does NOT rotate the refresh_token on refresh** (unlike Strava). The refresh
   response usually omits `refresh_token`; `refreshTokens` keeps the existing one
   (`data.refresh_token ?? current.refresh_token`). A refresh_token is only issued on the

@@ -315,6 +315,15 @@ function civilKey(c: CivilDate): string {
   return `${c.year}-${c.month}-${c.day}`;
 }
 
+/** True for the auth-failure messages thrown by loadTokens/refreshTokens above — callers that
+ *  swallow per-metric errors (a metric being unavailable for this account) must re-throw these
+ *  instead, since an expired/missing token isn't a per-metric condition and silently treating it
+ *  as "no data" hides the failure from both the user and the re-auth-needed cron check. */
+export function isReauthError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return /Token refresh failed|tokens file not found|re-run 'npm run oauth'/.test(msg);
+}
+
 export function clearCache(): void {
   cache.clear();
   tokens = null;

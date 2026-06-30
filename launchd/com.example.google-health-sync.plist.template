@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Template launchd plist for a MONTHLY best-effort Google Health → Obsidian sync.
-  (Interactive queries via the MCP tools are always live; this just refreshes the
-  Obsidian notes/dashboard periodically.) To use:
+  Template launchd plist for a best-effort Google Health → Obsidian sync, run every
+  4 days (interactive queries via the MCP tools are always live; this just refreshes
+  the Obsidian notes/dashboard periodically). To use:
   1. Copy to ~/Library/LaunchAgents/com.<you>.google-health-sync.plist (rename label).
   2. Replace every __USERNAME__ with your macOS short username (`whoami`).
   3. If you cloned the repo elsewhere, fix the paths below.
@@ -11,8 +11,14 @@
   NOTE: Google Health uses RESTRICTED OAuth scopes, so a production app would need a
   full Google security verification (CASA) — impractical for a single user. Keep the
   consent screen in "Testing" and accept that refresh tokens expire after 7 days. This
-  sync is therefore BEST-EFFORT: if the token has lapsed it logs a "re-auth needed" note
-  and exits without syncing (re-auth lazily with `npm run oauth` next time you use the data).
+  is a HARD cap: it does not reset just because the cron refreshed the access token in
+  the meantime, and re-auth requires a one-time interactive browser approval, so no
+  cron can fully automate around it. Running every 4 days (instead of monthly) only
+  narrows the staleness window and gives the cron a couple of chances to catch and
+  surface an expiry before a week of silence passes; it does NOT prevent the 7-day
+  expiry. The sync is BEST-EFFORT: if the token has lapsed it logs a "re-auth needed"
+  note, fires a macOS notification, and exits without syncing (re-auth with
+  `npm run oauth`, a ~10s browser approve).
 -->
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -39,16 +45,9 @@
         <string>/Users/__USERNAME__/Documents/Obsidian Vault</string>
     </dict>
 
-    <!-- Runs on the 1st of each month at 07:05. -->
-    <key>StartCalendarInterval</key>
-    <dict>
-        <key>Day</key>
-        <integer>1</integer>
-        <key>Hour</key>
-        <integer>7</integer>
-        <key>Minute</key>
-        <integer>5</integer>
-    </dict>
+    <!-- Runs every 4 days (well under the 7-day refresh-token expiry). -->
+    <key>StartInterval</key>
+    <integer>345600</integer>
 
     <key>StandardOutPath</key>
     <string>/Users/__USERNAME__/Library/Logs/google-health-sync.log</string>

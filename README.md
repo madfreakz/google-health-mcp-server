@@ -122,12 +122,19 @@ dashboard only need a periodic refresh, so set `OBSIDIAN_VAULT_PATH` and either 
 npm run sync                  # incremental sync since last run
 ```
 
-For an automated **monthly** refresh, a launchd template is in `launchd/`. Copy it to
+For an automated refresh, a launchd template is in `launchd/`. Copy it to
 `~/Library/LaunchAgents/`, replace `__USERNAME__`, and
-`launchctl bootstrap gui/$(id -u) <plist>`. It runs on the 1st of each month and is
-**best-effort**: if the 7-day token has lapsed it logs a "re-auth needed" note and exits cleanly
-(no crash-loop), and you re-auth lazily next time you use the data. A daily cron isn't worth it
-given the token expiry — monthly + on-demand is the pragmatic cadence.
+`launchctl bootstrap gui/$(id -u) <plist>`. It runs **every 4 days** (well under the 7-day
+refresh-token expiry) and is **best-effort**: if the token has lapsed it logs a "re-auth needed"
+note, fires a macOS notification, and exits cleanly (no crash-loop) — re-auth with
+`npm run oauth` (~10s browser approve).
+
+> **The 4-day cadence narrows staleness, it does not prevent expiry.** The cron can only
+> refresh the *access* token; the *refresh* token's 7-day Testing-mode cap is fixed by Google
+> regardless of how often it runs, and getting a new refresh token requires the one-time
+> interactive browser approval in `npm run oauth` — that step can't be scripted into a cron.
+> What the cadence change buys you is a couple of chances per week to *notice* an expiry (via
+> the notification) instead of going silent for up to a month.
 
 ## Develop
 
